@@ -1,0 +1,10 @@
+# build output (shipped via GitHub Releases, not committed)
+bin/
+
+# superseded code kept locally for reference, not part of the repo
+attic/
+
+# scratch / temp
+*.tmp
+*.bak
+*.png.icons.png

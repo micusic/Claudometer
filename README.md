@@ -1,0 +1,139 @@
+# Claudometer
+
+A Windows tray app that shows your Claude usage limits — the real 5-hour and weekly numbers,
+straight from Anthropic's own usage API. Native WinForms, ~64 KB, no runtime to install.
+
+*(Named for the `-ometer` instrument family — speed·o·meter, therm·o·meter — Claud·o·meter.)*
+
+![panel](docs/panel.png)
+
+## Download
+
+Grab **`Claudometer.exe`** from the [latest release](../../releases/latest) and run it — that's it.
+It needs only the .NET Framework 4.x that ships with Windows 10/11. On first run it asks you to log
+in to Claude (in your browser), then it lives in your tray.
+
+- **Left click** the tray icon — the panel
+- **Right click** — menu (login, refresh, settings, open data folder, quit)
+
+To start it with Windows (autostart + Start-menu shortcut + taskbar pin), clone this repo and run:
+
+```powershell
+.\install.ps1
+```
+
+`.\install.ps1 -Uninstall` reverses all of it.
+
+> Requires a Claude subscription (Pro / Max / Team). Unofficial, not affiliated with Anthropic;
+> it only calls Anthropic's own endpoints with your account's token.
+
+---
+
+## API-only, by design
+
+Everything shown is a number Anthropic returned. The app polls the same endpoint Claude Code's
+own status line uses —
+
+```
+GET https://api.anthropic.com/api/oauth/usage
+→ { five_hour: {utilization, resets_at}, seven_day: {…}, seven_day_opus, seven_day_sonnet }
+```
+
+— and displays it. There is **no local estimation, no calibration, and no prediction.** It does
+not read your transcripts. The only thing stored on disk is the sequence of readings the API
+returned (`%APPDATA%\Claudometer\history.bin`), and that stored history is what the burn-up chart's
+line is drawn from — real datapoints, never a guess.
+
+Because the numbers come from the account, **login is required**. With no login the panel shows a
+login screen and nothing else.
+
+## Login — once, in your browser
+
+Right-click the tray icon → **登录 Claude…** (or `Claudometer.exe --login` in a terminal). You sign
+in and consent on the real Anthropic page; the app never sees your password. It receives an OAuth
+**token**, stored DPAPI-encrypted for your Windows user only (`%APPDATA%\Claudometer\token.bin`),
+sent to no host but Anthropic's own. **退出登录** deletes it. This is the same OAuth client and
+flow Claude Code itself uses.
+
+> **The User-Agent gotcha (why this works when other tools 429).** Anthropic's OAuth endpoints sit
+> behind an edge rate-limit bucket keyed on `User-Agent`. The obvious value `claude-code/<version>`
+> — which every Claude Code install and most third-party tools send, and which community guides
+> insist on — shares one chronically-saturated global bucket and returns `429 rate_limit_error`
+> no matter how long you wait (this is the real cause of the widespread "OAuth login fails with
+> 429" reports). Claudometer sends a **unique per-process User-Agent** instead, so it gets its own
+> fresh bucket and logs in immediately. If you ever do see a 429, it's a normal per-window limit —
+> wait a minute and retry; don't hammer it.
+
+## The burn-up chart
+
+The centerpiece plots utilization across the fixed five-hour window:
+
+- **X** — the whole window, start → reset, so "now" sits where you are in it
+- **Y** — percent used, 0 → 100
+- **green line** — the actual readings, connecting the stored API polls up to the latest one
+- **grey line** — the pace line: a constant rate from (start, 0) to (reset, 100%), i.e. "use
+  evenly and you'd hit the limit exactly at reset"
+- **red dashed** — the 100% ceiling
+
+Below the pace line and clear of the ceiling = headroom to spare. The line only has points from
+when the app was running and polling — it fills in over time and never extrapolates. The colour
+tracks the level (green / amber / red at your warn / danger thresholds).
+
+The 5-hour gauge, the 7-day gauge, and the per-model weekly rows (Opus / Sonnet, when the API
+returns them) are all the current reading; each shows its real reset countdown.
+
+---
+
+## Appearance
+
+Light theme by default; a **深色** option is in Settings. Colour is centralised in `src/Theme.cs`.
+Times display in a configured zone (default Singapore, UTC+8), deliberately not the machine's local
+time — a usage window is reasoned about against a fixed wall clock.
+
+## Settings
+
+`%APPDATA%\Claudometer\config.json`, or the ⚙ button.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `warnPct` / `dangerPct` | 0.70 / 0.90 | Icon colour and balloon thresholds |
+| `pollSeconds` | 90 | How often to poll the usage API (min 60, to be gentle) |
+| `notify` | true | Threshold balloons |
+| `timeZoneId` | `Singapore Standard Time` | Display zone |
+| `theme` | `light` | `light` or `dark` |
+
+The OAuth token lives separately in `token.bin` (DPAPI-encrypted); the API readings live in
+`history.bin`. Neither is in this file.
+
+---
+
+## Build
+
+Needs nothing but Windows. `build.ps1` calls the .NET Framework compiler already on the machine
+(`%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe`) — no SDK, no NuGet, no network.
+
+```
+src/Theme.cs               centralised light/dark palette + drawing helpers
+src/Tz.cs                  display timezone
+src/JsonPeek.cs            partial JSON reader for API responses
+src/OAuth.cs               Claude OAuth (PKCE, unique UA) + DPAPI token storage
+src/UsageApi.cs            the api/oauth/usage client
+src/History.cs            local store of API readings (the only persisted data)
+src/Analytics.cs           builds the snapshot from stored readings
+src/AppConfig.cs           settings
+src/Fmt.cs                 duration / time formatting
+src/IconRenderer.cs        the tray glyph
+src/ProjectionRenderer.cs  the burn-up chart
+src/PanelForm.cs           the panel
+src/SettingsForm.cs        settings dialog
+src/LoginForm.cs           the login dialog
+src/Report.cs              --login / --api / --snapshot / --snapdlg
+src/Program.cs             tray, poll loop, alerting
+```
+
+CLI: `--login` (browser OAuth), `--api` (print the current usage and record one reading). Debug:
+`--show` opens the panel; `--snapshot out.png` renders the panel to PNG; `--snapdlg settings|login
+out.png` renders a dialog — how the layout gets checked without depending on which window is on top.
+
+Superseded code (transcript scanning, the output-token metric, /usage calibration) lives under
+`attic/` for reference; it is not compiled.
