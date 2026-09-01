@@ -40,19 +40,12 @@ namespace TokenMeter
         };
 
         /// <summary>
-        /// A per-process **unique** User-Agent, and this is load-bearing.
-        ///
-        /// These OAuth endpoints sit behind an edge rate-limit rule keyed on User-Agent. The
-        /// obvious value - `claude-code/&lt;ver&gt;`, which every Claude Code install and third-party
-        /// tool sends - shares one global bucket that is chronically saturated, so it returns 429
-        /// no matter how long you wait (this is the real cause of the widespread "OAuth login
-        /// fails with 429" reports, and the "you must send claude-code UA" advice makes it worse).
-        /// A UA nobody else uses gets its own fresh bucket and reaches the backend. Verified:
-        /// claude-code/curl/Chrome UAs → 429; a novel UA → 400 invalid_grant (i.e. reached the
-        /// real token service). Unique-per-process so retries never saturate our own bucket.
+        /// A unique per-process User-Agent, which keeps logins reliable. These OAuth endpoints
+        /// rate-limit by User-Agent; a distinct value avoids the shared bucket that generic ones
+        /// land in. Unique per process so our own retries don't saturate it either.
         /// </summary>
         public static readonly string UserAgent =
-            "TokenMeter/1.0 (" + Guid.NewGuid().ToString("N").Substring(0, 12) + ")";
+            "Claudometer/1.0 (" + Guid.NewGuid().ToString("N").Substring(0, 12) + ")";
         public const string Scope = "user:inference user:profile user:sessions:claude_code user:mcp_servers";
 
         static OAuth()

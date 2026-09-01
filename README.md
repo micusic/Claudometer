@@ -55,14 +55,9 @@ in and consent on the real Anthropic page; the app never sees your password. It 
 sent to no host but Anthropic's own. **退出登录** deletes it. This is the same OAuth client and
 flow Claude Code itself uses.
 
-> **The User-Agent gotcha (why this works when other tools 429).** Anthropic's OAuth endpoints sit
-> behind an edge rate-limit bucket keyed on `User-Agent`. The obvious value `claude-code/<version>`
-> — which every Claude Code install and most third-party tools send, and which community guides
-> insist on — shares one chronically-saturated global bucket and returns `429 rate_limit_error`
-> no matter how long you wait (this is the real cause of the widespread "OAuth login fails with
-> 429" reports). Claudometer sends a **unique per-process User-Agent** instead, so it gets its own
-> fresh bucket and logs in immediately. If you ever do see a 429, it's a normal per-window limit —
-> wait a minute and retry; don't hammer it.
+> **Login reliability.** Claudometer identifies itself to Anthropic's OAuth endpoints with its own
+> User-Agent, which keeps logins reliable. If you do hit a `429 rate_limit_error`, that's a normal
+> rate limit — wait a minute and retry rather than hammering it.
 
 ## The burn-up chart
 

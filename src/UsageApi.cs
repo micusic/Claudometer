@@ -25,12 +25,9 @@ namespace TokenMeter
     }
 
     /// <summary>
-    /// Reads the undocumented but authoritative usage endpoint Claude Code itself polls.
-    ///
-    /// It returns the real percentages and reset instants - the same numbers as /usage - so
-    /// when a token is present this is the source of truth. Its one weakness is an aggressive
-    /// rate limit, so callers poll it sparingly and lean on local metering in between; the
-    /// User-Agent below is required to avoid the harshest 429 bucket.
+    /// Reads the authoritative usage endpoint: the real percentages and reset instants, the same
+    /// numbers as /usage. It is rate-limited, so callers poll it sparingly; a distinct User-Agent
+    /// (see OAuth) keeps requests off the shared bucket.
     /// </summary>
     public static class UsageApi
     {
@@ -48,7 +45,7 @@ namespace TokenMeter
                 req.Method = "GET";
                 req.Accept = "application/json";
                 req.ContentType = "application/json";
-                req.UserAgent = OAuth.UserAgent;                 // unique UA - avoids the shared saturated bucket
+                req.UserAgent = OAuth.UserAgent;                 // distinct UA, see OAuth.UserAgent
                 req.Headers["Authorization"] = "Bearer " + accessToken;
                 req.Headers["anthropic-beta"] = "oauth-2025-04-20";
                 req.Timeout = 20000;
