@@ -49,11 +49,11 @@ login screen and nothing else.
 
 ## Login — once, in your browser
 
-Right-click the tray icon → **登录 Claude…** (or `Claudometer.exe --login` in a terminal). You sign
-in and consent on the real Anthropic page; the app never sees your password. It receives an OAuth
-**token**, stored DPAPI-encrypted for your Windows user only (`%APPDATA%\Claudometer\token.bin`),
-sent to no host but Anthropic's own. **退出登录** deletes it. This is the same OAuth client and
-flow Claude Code itself uses.
+Right-click the tray icon → **Sign in to Claude…** (or `Claudometer.exe --login` in a terminal).
+You sign in and consent on the real Anthropic page; the app never sees your password. It receives
+an OAuth **token**, stored DPAPI-encrypted for your Windows user only
+(`%APPDATA%\Claudometer\token.bin`), sent to no host but Anthropic's own. **Sign out** deletes it.
+This is the same OAuth client and flow Claude Code itself uses.
 
 > **Login reliability.** Claudometer identifies itself to Anthropic's OAuth endpoints with its own
 > User-Agent, which keeps logins reliable. If you do hit a `429 rate_limit_error`, that's a normal
@@ -79,11 +79,13 @@ returns them) are all the current reading; each shows its real reset countdown.
 
 ---
 
-## Appearance
+## Appearance & language
 
-Light theme by default; a **深色** option is in Settings. Colour is centralised in `src/Theme.cs`.
-Times display in a configured zone (default Singapore, UTC+8), deliberately not the machine's local
-time — a usage window is reasoned about against a fixed wall clock.
+Available in **English** (default), 中文, Français, Русский, and 日本語 — switch in Settings; day
+names and formatting follow the language. Light theme by default, with a dark option; colour is
+centralised in `src/Theme.cs`. Times display in a configured zone (default Singapore, UTC+8),
+deliberately not the machine's local time — a usage window is reasoned about against a fixed wall
+clock.
 
 ## Settings
 
@@ -96,6 +98,7 @@ time — a usage window is reasoned about against a fixed wall clock.
 | `notify` | true | Threshold balloons |
 | `timeZoneId` | `Singapore Standard Time` | Display zone |
 | `theme` | `light` | `light` or `dark` |
+| `language` | `en` | `en` / `zh` / `fr` / `ru` / `ja` |
 
 The OAuth token lives separately in `token.bin` (DPAPI-encrypted); the API readings live in
 `history.bin`. Neither is in this file.
@@ -110,6 +113,7 @@ Needs nothing but Windows. `build.ps1` calls the .NET Framework compiler already
 ```
 src/Theme.cs               centralised light/dark palette + drawing helpers
 src/Tz.cs                  display timezone
+src/L.cs                   localization (en / zh / fr / ru / ja)
 src/JsonPeek.cs            partial JSON reader for API responses
 src/OAuth.cs               Claude OAuth (PKCE, unique UA) + DPAPI token storage
 src/UsageApi.cs            the api/oauth/usage client

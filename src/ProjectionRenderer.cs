@@ -76,7 +76,7 @@ namespace TokenMeter
             if (!s.HasData || s.BurnPct.Count == 0)
             {
                 g.SmoothingMode = SmoothingMode.Default;
-                string msg = s.LoggedIn ? "正在获取用量…" : "登录后显示";
+                string msg = s.LoggedIn ? L.S("chart.waiting") : L.S("chart.loginfirst");
                 SizeF mm = g.MeasureString(msg, font);
                 using (var b = new SolidBrush(Theme.Faint))
                     g.DrawString(msg, font, b, plot.X + (plot.Width - mm.Width) / 2f, plot.Y + plot.Height / 2f - mm.Height);
@@ -102,7 +102,7 @@ namespace TokenMeter
             // 'now' divider at the latest sample
             using (var p = new Pen(Theme.Divider, 1f * scale)) { p.DashStyle = DashStyle.Dash; g.DrawLine(p, tip.X, plot.Y, tip.X, plot.Bottom); }
             {
-                string lab = "现在";
+                string lab = L.S("chart.now");
                 SizeF m = g.MeasureString(lab, font);
                 float lx = Math.Max(plot.X, Math.Min(tip.X - m.Width / 2f, plot.Right - m.Width));
                 using (var b = new SolidBrush(Theme.Muted)) g.DrawString(lab, font, b, lx, plot.Y - 1 * scale);

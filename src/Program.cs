@@ -37,7 +37,8 @@ namespace TokenMeter
             {
                 if (!created)
                 {
-                    MessageBox.Show("Claudometer 已经在运行（见任务栏通知区域）。", "Claudometer",
+                    AppConfig probe = AppConfig.Load(); L.Use(probe.Language);
+                    MessageBox.Show(L.S("instance.running"), "Claudometer",
                                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
@@ -90,6 +91,7 @@ namespace TokenMeter
         {
             _showOnReady = showOnReady;
             _cfg = AppConfig.Load();
+            L.Use(_cfg.Language);
             Tz.Use(_cfg.TimeZoneId);
             Theme.Apply(_cfg.ThemeMode);
             _token = OAuth.Load();
@@ -112,32 +114,38 @@ namespace TokenMeter
 
         private void BuildTray()
         {
-            var menu = new ContextMenuStrip();
-            menu.Items.Add("显示面板", null, delegate { TogglePanel(); });
-            menu.Items.Add("立即刷新", null, delegate { PollNow(); });
-            menu.Items.Add(new ToolStripSeparator());
-            _loginItem = new ToolStripMenuItem("登录 Claude…", null, delegate { DoLogin(); });
-            _logoutItem = new ToolStripMenuItem("退出登录", null, delegate { DoLogout(); });
-            menu.Items.Add(_loginItem);
-            menu.Items.Add(_logoutItem);
-            menu.Items.Add("设置…", null, delegate { OpenSettings(); });
-            menu.Items.Add("打开数据目录", null, delegate { OpenFolder(AppConfig.Dir); });
-            menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add("关于", null, delegate { About(); });
-            menu.Items.Add("退出", null, delegate { Quit(); });
-
-            _tray.ContextMenuStrip = menu;
+            RebuildMenu();
             _tray.Text = "Claudometer";
             _tray.Visible = true;
             SetIcon(0, IconRenderer.IdleGray, false);
             _tray.MouseClick += OnTrayClick;
+        }
+
+        private void RebuildMenu()
+        {
+            var old = _tray.ContextMenuStrip;
+            var menu = new ContextMenuStrip();
+            menu.Items.Add(L.S("menu.panel"), null, delegate { TogglePanel(); });
+            menu.Items.Add(L.S("menu.refresh"), null, delegate { PollNow(); });
+            menu.Items.Add(new ToolStripSeparator());
+            _loginItem = new ToolStripMenuItem(L.S("menu.login"), null, delegate { DoLogin(); });
+            _logoutItem = new ToolStripMenuItem(L.S("menu.logout"), null, delegate { DoLogout(); });
+            menu.Items.Add(_loginItem);
+            menu.Items.Add(_logoutItem);
+            menu.Items.Add(L.S("menu.settings"), null, delegate { OpenSettings(); });
+            menu.Items.Add(L.S("menu.datadir"), null, delegate { OpenFolder(AppConfig.Dir); });
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add(L.S("menu.about"), null, delegate { About(); });
+            menu.Items.Add(L.S("menu.quit"), null, delegate { Quit(); });
+            _tray.ContextMenuStrip = menu;
             UpdateLoginMenu();
+            if (old != null) old.Dispose();
         }
 
         private void UpdateLoginMenu()
         {
             bool inl = _token != null;
-            if (_loginItem != null) _loginItem.Text = inl ? "重新登录 Claude…" : "登录 Claude…";
+            if (_loginItem != null) _loginItem.Text = inl ? L.S("menu.relogin") : L.S("menu.login");
             if (_logoutItem != null) _logoutItem.Visible = inl;
         }
 
@@ -178,7 +186,7 @@ namespace TokenMeter
                 string rerr;
                 TokenSet fresh = OAuth.Refresh(_token.RefreshToken, out rerr);
                 if (fresh != null) { _token = fresh; OAuth.Save(_token); }
-                else { _apiStatus = "登录已过期，请重新登录"; return; }
+                else { _apiStatus = L.S("status.tokenexpired"); return; }
             }
 
             UsageReading reading; string msg;
@@ -199,13 +207,13 @@ namespace TokenMeter
                     break;
                 case UsageApi.Status.RateLimited:
                     _backoffSec = Math.Min(900, Math.Max(_cfg.PollSeconds, _backoffSec) * 2);
-                    _apiStatus = "接口限流，" + (_backoffSec / 60) + " 分钟后重试";
+                    _apiStatus = L.F("status.ratelimited", _backoffSec / 60);
                     break;
                 case UsageApi.Status.Unauthorized:
-                    _apiStatus = "登录已失效，请重新登录";
+                    _apiStatus = L.S("status.unauth");
                     break;
                 default:
-                    _apiStatus = "接口连接失败，重试中";
+                    _apiStatus = L.S("status.error");
                     break;
             }
         }
@@ -218,8 +226,8 @@ namespace TokenMeter
         private void ApplySnapshot()
         {
             if (_snap == null) return;
-            if (!_snap.LoggedIn) { SetIcon(0, IconRenderer.IdleGray, false); _tray.Text = "Claudometer · 未登录"; }
-            else if (!_snap.HasData) { SetIcon(0, IconRenderer.IdleGray, false); _tray.Text = "Claudometer · 获取中"; }
+            if (!_snap.LoggedIn) { SetIcon(0, IconRenderer.IdleGray, false); _tray.Text = L.S("tray.notloggedin"); }
+            else if (!_snap.HasData) { SetIcon(0, IconRenderer.IdleGray, false); _tray.Text = L.S("tray.fetching"); }
             else
             {
                 double frac = double.IsNaN(_snap.FivePct) ? 0 : _snap.FivePct / 100.0;
@@ -259,19 +267,19 @@ namespace TokenMeter
             if (!_sentOver && s.FivePct >= 100)
             {
                 _sentOver = _sentDanger = _sentWarn = true;
-                _tray.ShowBalloonTip(10000, "5 小时额度已用满", Fmt.Duration(s.ToReset) + "后重置。", ToolTipIcon.Error);
+                _tray.ShowBalloonTip(10000, L.S("balloon.full.title"), L.F("balloon.reset.body", Fmt.Duration(s.ToReset)), ToolTipIcon.Error);
             }
             else if (!_sentDanger && s.FivePct >= _cfg.DangerPct * 100)
             {
                 _sentDanger = _sentWarn = true;
-                _tray.ShowBalloonTip(10000, "5 小时窗口已用 " + (int)Math.Round(s.FivePct) + "%",
-                    Fmt.Duration(s.ToReset) + "后重置。", ToolTipIcon.Warning);
+                _tray.ShowBalloonTip(10000, L.F("balloon.used.title", (int)Math.Round(s.FivePct)),
+                    L.F("balloon.reset.body", Fmt.Duration(s.ToReset)), ToolTipIcon.Warning);
             }
             else if (!_sentWarn && s.FivePct >= _cfg.WarnPct * 100)
             {
                 _sentWarn = true;
-                _tray.ShowBalloonTip(8000, "5 小时窗口已用 " + (int)Math.Round(s.FivePct) + "%",
-                    Fmt.Duration(s.ToReset) + "后重置。", ToolTipIcon.Warning);
+                _tray.ShowBalloonTip(8000, L.F("balloon.used.title", (int)Math.Round(s.FivePct)),
+                    L.F("balloon.reset.body", Fmt.Duration(s.ToReset)), ToolTipIcon.Warning);
             }
         }
 
@@ -289,7 +297,7 @@ namespace TokenMeter
                     _backoffSec = _cfg.PollSeconds;
                     _lastPollUtc = DateTime.MinValue;
                     UpdateLoginMenu();
-                    _tray.ShowBalloonTip(6000, "已登录 Claude", "开始读取官方用量。", ToolTipIcon.Info);
+                    _tray.ShowBalloonTip(6000, L.S("balloon.signedin.title"), L.S("balloon.signedin.body"), ToolTipIcon.Info);
                     PollNow();
                 }
             }
@@ -303,7 +311,7 @@ namespace TokenMeter
             _apiStatus = "";
             UpdateLoginMenu();
             Rebuild(); ApplySnapshot();
-            _tray.ShowBalloonTip(5000, "已退出登录", "登录后才能显示用量。", ToolTipIcon.Info);
+            _tray.ShowBalloonTip(5000, L.S("balloon.signedout.title"), L.S("balloon.signedout.body"), ToolTipIcon.Info);
         }
 
         private void OnReadyShow()
@@ -324,9 +332,11 @@ namespace TokenMeter
                 {
                     if (f.ShowDialog() == DialogResult.OK)
                     {
+                        L.Use(_cfg.Language);
                         Tz.Use(_cfg.TimeZoneId);
                         Theme.Apply(_cfg.ThemeMode);
                         _backoffSec = _cfg.PollSeconds;
+                        RebuildMenu();
                         Rebuild(); ApplySnapshot();
                         if (_panel.Visible) _panel.Update(_snap, _cfg);
                     }
@@ -346,13 +356,8 @@ namespace TokenMeter
             _panel.SuppressAutoHide = true;
             try
             {
-                MessageBox.Show(
-                    "Claudometer — Claude Code 用量\n\n" +
-                    "只显示官方用量接口（api.anthropic.com/api/oauth/usage）返回的数据，\n" +
-                    "登录在你自己的浏览器完成，令牌加密存于本机。\n" +
-                    "本地只保存接口返回的历史读数，不做任何推测。\n\n" +
-                    _history.Samples.Count + " 条本地历史读数",
-                    "关于 Claudometer", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(L.F("about.body", _history.Samples.Count), L.S("about.title"),
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             finally { _panel.SuppressAutoHide = false; }
         }

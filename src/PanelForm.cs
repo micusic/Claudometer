@@ -147,7 +147,7 @@ namespace TokenMeter
             int y = S(16);
             y = PaintHeader(g, y);
 
-            if (_snap == null || _cfg == null) { Str(g, "启动中…", _f9, Theme.Muted, Lx, y); return; }
+            if (_snap == null || _cfg == null) { Str(g, L.S("panel.starting"), _f9, Theme.Muted, Lx, y); return; }
             if (!_snap.LoggedIn) { PaintLoginNeeded(g, y); return; }
             if (!_snap.HasData) { PaintWaiting(g, y); return; }
 
@@ -192,11 +192,11 @@ namespace TokenMeter
         {
             int cx = ClientSize.Width / 2;
             y += S(48);
-            CenterStr(g, "需要登录 Claude", _f11b, Theme.Text, cx, y); y += S(28);
-            CenterStr(g, "本工具只显示官方用量接口的数据。", _f8, Theme.Muted, cx, y); y += S(18);
-            CenterStr(g, "登录在你自己的浏览器完成，不经手密码。", _f8, Theme.Muted, cx, y); y += S(30);
+            CenterStr(g, L.S("login.title"), _f11b, Theme.Text, cx, y); y += S(28);
+            CenterStr(g, L.S("login.desc1"), _f8, Theme.Muted, cx, y); y += S(18);
+            CenterStr(g, L.S("login.desc2"), _f8, Theme.Muted, cx, y); y += S(30);
 
-            string label = "登录 Claude";
+            string label = L.S("login.button");
             SizeF m = g.MeasureString(label, _f9b);
             int bw = (int)m.Width + S(40), bh = S(34);
             var r = new Rectangle(cx - bw / 2, y, bw, bh);
@@ -210,7 +210,7 @@ namespace TokenMeter
         {
             int cx = ClientSize.Width / 2;
             y += S(56);
-            string msg = string.IsNullOrEmpty(_snap.ApiStatus) ? "正在获取官方用量…" : _snap.ApiStatus;
+            string msg = string.IsNullOrEmpty(_snap.ApiStatus) ? L.S("panel.fetching") : _snap.ApiStatus;
             CenterStr(g, msg, _f9, Theme.Muted, cx, y);
         }
 
@@ -220,7 +220,7 @@ namespace TokenMeter
             Color txt = LevelText(s.FivePct), fill = LevelFill(s.FivePct);
 
             DateTime start = s.FiveResetUtc - Analytics.Window;
-            string head = "5 小时窗口";
+            string head = L.S("win5.title");
             if (s.FiveResetUtc > DateTime.MinValue)
                 head += "  " + Fmt.LocalTime(start) + " → " + Fmt.LocalTime(s.FiveResetUtc);
             Str(g, head, _f9b, Theme.Muted, Lx, y + S(12));
@@ -236,8 +236,8 @@ namespace TokenMeter
             // source pill
             PaintPill(g, y);
             string reset = s.FiveResetUtc > s.NowUtc
-                ? Fmt.Duration(s.ToReset) + "后重置"
-                : "已重置";
+                ? L.F("reset.in", Fmt.Duration(s.ToReset))
+                : L.S("reset.done");
             Str(g, reset, _f8, Theme.Muted, Lx, y + S(1));
             y += S(24);
             return y;
@@ -249,8 +249,8 @@ namespace TokenMeter
             int age = (int)(s.NowUtc - s.ApiLiveUtc).TotalSeconds;
             bool fresh = age < 8 * 60;
             string text; Color dot, fg;
-            if (fresh) { text = "官方 · " + (age < 75 ? "刚刚" : Fmt.Duration(TimeSpan.FromSeconds(age)) + "前"); dot = Theme.OkFill; fg = Theme.OkText; }
-            else { text = "官方 · " + Fmt.Duration(TimeSpan.FromSeconds(age)) + "前（刷新中）"; dot = Theme.WarnFill; fg = Theme.WarnText; }
+            if (fresh) { text = age < 75 ? L.S("pill.now") : L.F("pill.ago", Fmt.Duration(TimeSpan.FromSeconds(age))); dot = Theme.OkFill; fg = Theme.OkText; }
+            else { text = L.F("pill.stale", Fmt.Duration(TimeSpan.FromSeconds(age))); dot = Theme.WarnFill; fg = Theme.WarnText; }
 
             SizeF tm = g.MeasureString(text, _f7);
             int w = S(18) + (int)Math.Ceiling(tm.Width) + S(10), h = S(17);
@@ -264,7 +264,7 @@ namespace TokenMeter
 
         private int PaintChart(Graphics g, int y)
         {
-            Str(g, "本窗口燃起图", _f9b, Theme.Text, Lx, y);
+            Str(g, L.S("chart.title"), _f9b, Theme.Text, Lx, y);
             y += S(22);
             var area = new Rectangle(Lx, y, ClientSize.Width - 2 * Lx, S(132));
             ProjectionRenderer.Draw(g, area, _snap, _f7, _s);
@@ -272,11 +272,12 @@ namespace TokenMeter
 
             // legend
             float x = Lx;
-            x = Swatch(g, x, y, ProjectionRenderer.ActualColor(_snap), "实际", false);
-            x = Swatch(g, x + S(10), y, ProjectionRenderer.PaceColor, "匀速", false);
-            Swatch(g, x + S(10), y, ProjectionRenderer.CeilingColor, "上限 100%", true);
-            SizeF nm = g.MeasureString(_snap.SampleCount + " 个采样点", _f7);
-            Str(g, _snap.SampleCount + " 个采样点", _f7, Theme.Faint, Rx - nm.Width, y);
+            x = Swatch(g, x, y, ProjectionRenderer.ActualColor(_snap), L.S("legend.actual"), false);
+            x = Swatch(g, x + S(10), y, ProjectionRenderer.PaceColor, L.S("legend.pace"), false);
+            Swatch(g, x + S(10), y, ProjectionRenderer.CeilingColor, L.S("legend.ceiling"), true);
+            string samples = L.F("chart.samples", _snap.SampleCount);
+            SizeF nm = g.MeasureString(samples, _f7);
+            Str(g, samples, _f7, Theme.Faint, Rx - nm.Width, y);
 
             y += S(18);
             Line(g, y);
@@ -287,8 +288,8 @@ namespace TokenMeter
         {
             Snapshot s = _snap;
             Color txt = LevelText(s.SevenPct), fill = LevelFill(s.SevenPct);
-            string head = "7 天窗口";
-            if (s.SevenResetUtc > DateTime.MinValue) head += "  重置 " + Fmt.LocalDate(s.SevenResetUtc, "ddd HH:mm");
+            string head = L.S("win7.title");
+            if (s.SevenResetUtc > DateTime.MinValue) head += "  " + L.F("reset.at", Fmt.LocalDate(s.SevenResetUtc, "ddd HH:mm"));
             Str(g, head, _f9b, Theme.Muted, Lx, y);
             string pct = P(s.SevenPct);
             SizeF pm = g.MeasureString(pct, _f9b);
@@ -297,7 +298,7 @@ namespace TokenMeter
             RoundBar(g, new Rectangle(Lx, y, ClientSize.Width - 2 * Lx, S(7)), s.SevenPct / 100.0, fill);
             y += S(13);
             if (s.SevenResetUtc > s.NowUtc)
-                Str(g, Fmt.Duration(s.ToWeekReset) + "后重置", _f8, Theme.Muted, Lx, y);
+                Str(g, L.F("reset.in", Fmt.Duration(s.ToWeekReset)), _f8, Theme.Muted, Lx, y);
             y += S(20);
             Line(g, y);
             return y + S(14);
@@ -309,10 +310,10 @@ namespace TokenMeter
             bool hasOpus = !double.IsNaN(s.OpusPct), hasSonnet = !double.IsNaN(s.SonnetPct);
             if (!hasOpus && !hasSonnet)
             {
-                Str(g, "7 天分模型：本次读数未返回", _f7, Theme.Faint, Lx, y);
+                Str(g, L.S("models.none"), _f7, Theme.Faint, Lx, y);
                 return;
             }
-            Str(g, "7 天 · 分模型", _f9b, Theme.Text, Lx, y);
+            Str(g, L.S("models.title"), _f9b, Theme.Text, Lx, y);
             y += S(22);
             if (hasOpus) y = ModelRow(g, "Opus", s.OpusPct, y);
             if (hasSonnet) ModelRow(g, "Sonnet", s.SonnetPct, y);
@@ -334,8 +335,8 @@ namespace TokenMeter
             Snapshot s = _snap;
             int y = ClientSize.Height - S(24);
             Line(g, y - S(8));
-            Str(g, "官方接口 · " + Fmt.LocalTime(s.ApiLiveUtc) + " 读取", _f7, Theme.Faint, Lx, y);
-            string right = s.SampleCount + " 条本地历史";
+            Str(g, L.F("footer.read", Fmt.LocalTime(s.ApiLiveUtc)), _f7, Theme.Faint, Lx, y);
+            string right = L.F("footer.history", s.SampleCount);
             SizeF m = g.MeasureString(right, _f7);
             Str(g, right, _f7, Theme.Faint, Rx - m.Width, y);
         }

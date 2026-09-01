@@ -102,9 +102,10 @@ namespace TokenMeter
         /// Trades the pasted "code#state" for tokens. The pasted value carries the state back,
         /// so a mismatch against the state we generated means the code is for another attempt.
         /// </summary>
-        public static TokenSet Exchange(string pastedCode, string verifier, string expectedState, out string error)
+        public static TokenSet Exchange(string pastedCode, string verifier, string expectedState,
+                                        out string error, out bool rateLimited)
         {
-            error = null;
+            error = null; rateLimited = false;
             string code = pastedCode == null ? "" : pastedCode.Trim();
             string state = expectedState;
             int hash = code.IndexOf('#');
@@ -115,7 +116,7 @@ namespace TokenMeter
             }
             if (!string.IsNullOrEmpty(expectedState) && state != expectedState)
             {
-                error = "粘贴的 code 与本次登录不匹配（state 不一致），请重新发起登录。";
+                error = L.S("oauth.statemismatch");
                 return null;
             }
 
@@ -128,7 +129,13 @@ namespace TokenMeter
                 new[] { "redirect_uri", RedirectUri },
                 new[] { "code_verifier", verifier },
             };
-            return PostToken(fields, out error);
+            return PostToken(fields, out error, out rateLimited);
+        }
+
+        /// <summary>Convenience overload (used by the refresh path, which ignores the flag).</summary>
+        public static TokenSet Exchange(string pastedCode, string verifier, string expectedState, out string error)
+        {
+            bool _; return Exchange(pastedCode, verifier, expectedState, out error, out _);
         }
 
         public static TokenSet Refresh(string refreshToken, out string error)
@@ -139,7 +146,7 @@ namespace TokenMeter
                 new[] { "refresh_token", refreshToken },
                 new[] { "client_id", ClientId },
             };
-            return PostToken(fields, out error);
+            bool _; return PostToken(fields, out error, out _);
         }
 
         /// <summary>
@@ -149,9 +156,9 @@ namespace TokenMeter
         /// Only a 404 / connection failure ("wrong host") advances to the next host; a 400/401 on
         /// one host is answered by trying the other encoding there once, then giving up.
         /// </summary>
-        private static TokenSet PostToken(string[][] fields, out string error)
+        private static TokenSet PostToken(string[][] fields, out string error, out bool rateLimited)
         {
-            error = null;
+            error = null; rateLimited = false;
             string lastErr = "";
 
             for (int h = 0; h < TokenUrls.Length; h++)
@@ -170,17 +177,16 @@ namespace TokenMeter
                     {
                         TokenSet t = ParseToken(resp);
                         if (t != null) return t;
-                        error = "令牌响应里没有 access_token。" + Trim(resp);
+                        error = L.F("oauth.noaccess", Trim(resp));
                         return null;
                     }
 
                     if (status == 429)
                     {
-                        // With a unique UA this should not happen. If it does, the edge bucket is
-                        // saturated anyway; a short wait clears a per-window limit.
+                        rateLimited = true;
                         error = retryAfter > 0
-                            ? "令牌服务限流，约 " + retryAfter + " 秒后可再试（code 仍有效）。"
-                            : "令牌服务限流，请稍等一两分钟再用同一个 code 点一次「完成登录」。";
+                            ? L.F("oauth.ratelimit.retry", retryAfter)
+                            : L.S("oauth.ratelimit.wait");
                         return null;
                     }
 
@@ -193,7 +199,7 @@ namespace TokenMeter
                     break;
                 }
             }
-            error = "换取令牌失败：" + lastErr;
+            error = L.F("oauth.exchangefail", lastErr);
             return null;
         }
 

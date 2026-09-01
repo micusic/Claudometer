@@ -14,10 +14,11 @@ namespace TokenMeter
             AppConfig cfg = AppConfig.Load();
             Tz.Use(cfg.TimeZoneId);
 
+            L.Use(cfg.Language);
             string verifier = OAuth.NewVerifier();
             string state = OAuth.NewState();
             W("");
-            W("在浏览器打开下面的链接，登录并同意，然后把页面给出的 code 粘回这里：");
+            W("Open this link in your browser, sign in and consent, then paste the code back here:");
             W("");
             W(OAuth.BuildAuthorizeUrl(verifier, state));
             W("");
@@ -26,17 +27,17 @@ namespace TokenMeter
 
             string err;
             TokenSet t = OAuth.Exchange(pasted, verifier, state, out err);
-            if (t == null) { W("登录失败：" + err); return; }
+            if (t == null) { W("Sign-in failed: " + err); return; }
 
             UsageReading reading; string msg;
             UsageApi.Status st = UsageApi.Fetch(t.AccessToken, out reading, out msg);
-            if (st == UsageApi.Status.Unauthorized) { W("令牌被拒：" + msg); return; }
+            if (st == UsageApi.Status.Unauthorized) { W("Token rejected: " + msg); return; }
 
             OAuth.Save(t);
             W("");
-            W("登录成功，令牌已加密保存到 " + OAuth.TokenPath);
+            W("Signed in. Token stored encrypted at " + OAuth.TokenPath);
             if (st == UsageApi.Status.Ok && reading != null) PrintReading(reading);
-            else W("（用量接口暂时不可用：" + msg + "，令牌有效，托盘会稍后重试）");
+            else W("(usage API unavailable for now: " + msg + "; the token is valid, the tray will retry)");
             W("");
         }
 
@@ -45,17 +46,18 @@ namespace TokenMeter
         {
             AppConfig cfg = AppConfig.Load();
             Tz.Use(cfg.TimeZoneId);
+            L.Use(cfg.Language);
             TokenSet t = OAuth.Load();
-            if (t == null) { W("未登录。先运行 TokenMeter.exe --login。"); return; }
+            if (t == null) { W("Not signed in. Run Claudometer.exe --login first."); return; }
             if (t.Expired)
             {
                 string rerr; TokenSet fresh = OAuth.Refresh(t.RefreshToken, out rerr);
                 if (fresh != null) { t = fresh; OAuth.Save(t); }
-                else { W("令牌过期且刷新失败：" + rerr); return; }
+                else { W("Token expired and refresh failed: " + rerr); return; }
             }
             UsageReading r; string msg;
             UsageApi.Status st = UsageApi.Fetch(t.AccessToken, out r, out msg);
-            if (st != UsageApi.Status.Ok) { W("用量接口：" + st + " " + msg); return; }
+            if (st != UsageApi.Status.Ok) { W("Usage API: " + st + " " + msg); return; }
             PrintReading(r);
             var h = new History(); h.Load(); h.Add(UsageSample.From(r)); h.Save();
         }
@@ -63,15 +65,15 @@ namespace TokenMeter
         private static void PrintReading(UsageReading r)
         {
             W("");
-            W("官方用量（api/oauth/usage）：");
+            W("Usage (api/oauth/usage):");
             if (r.FiveHour.HasValue)
-                W("  5 小时  " + r.FiveHour.Utilization.ToString("0") + "%   重置 " + Fmt.LocalDate(r.FiveHour.ResetUtc, "MM-dd HH:mm"));
+                W("  5-hour  " + r.FiveHour.Utilization.ToString("0") + "%   resets " + Fmt.LocalDate(r.FiveHour.ResetUtc, "MM-dd HH:mm"));
             if (r.SevenDay.HasValue)
-                W("  7 天    " + r.SevenDay.Utilization.ToString("0") + "%   重置 " + Fmt.LocalDate(r.SevenDay.ResetUtc, "ddd HH:mm"));
+                W("  7-day   " + r.SevenDay.Utilization.ToString("0") + "%   resets " + Fmt.LocalDate(r.SevenDay.ResetUtc, "ddd HH:mm"));
             if (r.SevenDayOpus.HasValue)
-                W("  周·Opus   " + r.SevenDayOpus.Utilization.ToString("0") + "%");
+                W("  wk Opus   " + r.SevenDayOpus.Utilization.ToString("0") + "%");
             if (r.SevenDaySonnet.HasValue)
-                W("  周·Sonnet " + r.SevenDaySonnet.Utilization.ToString("0") + "%");
+                W("  wk Sonnet " + r.SevenDaySonnet.Utilization.ToString("0") + "%");
         }
 
         /// <summary>`--snapshot out.png` renders the panel from local history (no live poll).</summary>
@@ -80,6 +82,7 @@ namespace TokenMeter
             if (string.IsNullOrEmpty(path)) path = "panel.png";
             AppConfig cfg = AppConfig.Load();
             Tz.Use(cfg.TimeZoneId);
+            L.Use(cfg.Language);
             Theme.Apply(cfg.ThemeMode);
             var hist = new History(); hist.Load();
             bool loggedIn = OAuth.Load() != null;
@@ -104,6 +107,7 @@ namespace TokenMeter
             if (string.IsNullOrEmpty(path)) path = "dialog.png";
             AppConfig cfg = AppConfig.Load();
             Tz.Use(cfg.TimeZoneId);
+            L.Use(cfg.Language);
             Theme.Apply(cfg.ThemeMode);
 
             Form f = (which ?? "").ToLowerInvariant() == "login" ? (Form)new LoginForm() : new SettingsForm(cfg);

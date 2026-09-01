@@ -16,7 +16,7 @@ namespace TokenMeter
 
         private NumericUpDown _warn, _danger, _refresh;
         private CheckBox _notify, _autostart;
-        private ComboBox _tz, _theme;
+        private ComboBox _tz, _theme, _lang;
 
         public SettingsForm(AppConfig cfg)
         {
@@ -26,7 +26,7 @@ namespace TokenMeter
 
         private void Build()
         {
-            Text = "Claudometer 设置";
+            Text = L.S("settings.title");
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
@@ -34,55 +34,36 @@ namespace TokenMeter
             BackColor = Bg;
             ForeColor = Fg;
             Font = new Font(FontName, 9f);
-            ClientSize = new Size(470, 366);
+            ClientSize = new Size(470, 402);
 
             int y = 14;
-            AddNote("只显示官方用量接口的数据，需先登录 Claude。\n" +
-                    "本地只保存接口返回的读数，不做任何推测。", ref y);
+            AddNote(L.S("settings.note"), ref y);
             y += 6;
 
-            var tzl = new Label();
-            tzl.Text = "显示时区";
-            tzl.SetBounds(16, y + 4, 210, 22);
-            tzl.ForeColor = Fg;
-            Controls.Add(tzl);
-            _tz = new ComboBox();
-            _tz.DropDownStyle = ComboBoxStyle.DropDownList;
-            _tz.SetBounds(240, y, 210, 24);
-            _tz.BackColor = Field;
-            _tz.ForeColor = Fg;
+            _lang = Combo(L.S("settings.lang"), ref y);
+            foreach (string n in L.Names) _lang.Items.Add(n);
+            _lang.SelectedIndex = L.IndexOf(_cfg.Language);
+
+            _tz = Combo(L.S("settings.tz"), ref y);
             foreach (TimeZoneInfo z in TimeZoneInfo.GetSystemTimeZones()) _tz.Items.Add(z.Id);
             _tz.SelectedItem = _tz.Items.Contains(_cfg.TimeZoneId) ? _cfg.TimeZoneId : Tz.DefaultId;
-            Controls.Add(_tz);
-            y += 32;
 
-            var thl = new Label();
-            thl.Text = "主题";
-            thl.SetBounds(16, y + 4, 210, 22);
-            thl.ForeColor = Fg;
-            Controls.Add(thl);
-            _theme = new ComboBox();
-            _theme.DropDownStyle = ComboBoxStyle.DropDownList;
-            _theme.SetBounds(240, y, 210, 24);
-            _theme.BackColor = Field;
-            _theme.ForeColor = Fg;
-            _theme.Items.Add("浅色");
-            _theme.Items.Add("深色");
+            _theme = Combo(L.S("settings.theme"), ref y);
+            _theme.Items.Add(L.S("settings.theme.light"));
+            _theme.Items.Add(L.S("settings.theme.dark"));
             _theme.SelectedIndex = string.Equals(_cfg.ThemeMode, "dark", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-            Controls.Add(_theme);
-            y += 32;
 
-            _warn = AddNum("预警阈值 (%)", (decimal)Math.Round(_cfg.WarnPct * 100), 5, 98, 5, ref y);
-            _danger = AddNum("危险阈值 (%)", (decimal)Math.Round(_cfg.DangerPct * 100), 10, 99, 5, ref y);
-            _refresh = AddNum("轮询间隔 (秒)", _cfg.PollSeconds, 60, 900, 30, ref y);
+            _warn = AddNum(L.S("settings.warn"), (decimal)Math.Round(_cfg.WarnPct * 100), 5, 98, 5, ref y);
+            _danger = AddNum(L.S("settings.danger"), (decimal)Math.Round(_cfg.DangerPct * 100), 10, 99, 5, ref y);
+            _refresh = AddNum(L.S("settings.poll"), _cfg.PollSeconds, 60, 900, 30, ref y);
 
             y += 6;
-            _notify = AddCheck("启用阈值通知", _cfg.Notify, ref y);
-            _autostart = AddCheck("开机自动启动", Autostart.IsEnabled(), ref y);
+            _notify = AddCheck(L.S("settings.notify"), _cfg.Notify, ref y);
+            _autostart = AddCheck(L.S("settings.autostart"), Autostart.IsEnabled(), ref y);
 
             y += 10;
             var ok = new Button();
-            ok.Text = "保存";
+            ok.Text = L.S("settings.save");
             ok.SetBounds(ClientSize.Width - 190, y, 84, 28);
             ok.FlatStyle = FlatStyle.Flat;
             ok.BackColor = Theme.Accent;
@@ -92,7 +73,7 @@ namespace TokenMeter
             Controls.Add(ok);
 
             var cancel = new Button();
-            cancel.Text = "取消";
+            cancel.Text = L.S("settings.cancel");
             cancel.SetBounds(ClientSize.Width - 98, y, 84, 28);
             cancel.FlatStyle = FlatStyle.Flat;
             cancel.BackColor = Field;
@@ -103,6 +84,23 @@ namespace TokenMeter
 
             AcceptButton = ok;
             CancelButton = cancel;
+        }
+
+        private ComboBox Combo(string label, ref int y)
+        {
+            var l = new Label();
+            l.Text = label;
+            l.SetBounds(16, y + 4, 210, 22);
+            l.ForeColor = Fg;
+            Controls.Add(l);
+            var c = new ComboBox();
+            c.DropDownStyle = ComboBoxStyle.DropDownList;
+            c.SetBounds(240, y, 210, 24);
+            c.BackColor = Field;
+            c.ForeColor = Fg;
+            Controls.Add(c);
+            y += 32;
+            return c;
         }
 
         private void AddNote(string s, ref int y)
@@ -171,22 +169,19 @@ namespace TokenMeter
             _cfg.DangerPct = (double)_danger.Value / 100.0;
             _cfg.PollSeconds = (int)_refresh.Value;
             _cfg.Notify = _notify.Checked;
-            if (_tz.SelectedItem != null)
-            {
-                _cfg.TimeZoneId = _tz.SelectedItem.ToString();
-                _cfg.ThemeMode = _theme.SelectedIndex == 1 ? "dark" : "light";
-                Tz.Use(_cfg.TimeZoneId);
-            }
+            if (_lang.SelectedIndex >= 0) _cfg.Language = L.Codes[_lang.SelectedIndex];
+            if (_tz.SelectedItem != null) _cfg.TimeZoneId = _tz.SelectedItem.ToString();
+            _cfg.ThemeMode = _theme.SelectedIndex == 1 ? "dark" : "light";
             try { _cfg.Save(); }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "保存设置失败：" + ex.Message, "Claudometer",
+                MessageBox.Show(this, L.F("settings.saveerr", ex.Message), "Claudometer",
                                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             try { Autostart.Set(_autostart.Checked); }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "设置开机自启失败：" + ex.Message, "Claudometer",
+                MessageBox.Show(this, L.F("settings.autostarterr", ex.Message), "Claudometer",
                                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             DialogResult = DialogResult.OK;

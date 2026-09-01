@@ -21,6 +21,7 @@ namespace TokenMeter
         public bool Notify = true;
         public string TimeZoneId = Tz.DefaultId;
         public string ThemeMode = "light";   // "light" | "dark"
+        public string Language = "en";        // en | zh | fr | ru | ja
 
         public static string Dir
         {
@@ -67,6 +68,8 @@ namespace TokenMeter
                 if (kv.TryGetValue("timeZoneId", out tz) && !string.IsNullOrEmpty(tz)) c.TimeZoneId = Unescape(tz);
                 string theme;
                 if (kv.TryGetValue("theme", out theme) && !string.IsNullOrEmpty(theme)) c.ThemeMode = Unescape(theme);
+                string lang;
+                if (kv.TryGetValue("language", out lang) && !string.IsNullOrEmpty(lang)) c.Language = Unescape(lang);
             }
             catch (Exception) { /* a broken config falls back to defaults rather than blocking startup */ }
             c.Clamp();
@@ -93,7 +96,8 @@ namespace TokenMeter
             sb.AppendLine("  \"pollSeconds\": " + PollSeconds + ",");
             sb.AppendLine("  \"notify\": " + (Notify ? "true" : "false") + ",");
             sb.AppendLine("  \"timeZoneId\": \"" + Escape(TimeZoneId ?? Tz.DefaultId) + "\",");
-            sb.AppendLine("  \"theme\": \"" + Escape(ThemeMode ?? "light") + "\"");
+            sb.AppendLine("  \"theme\": \"" + Escape(ThemeMode ?? "light") + "\",");
+            sb.AppendLine("  \"language\": \"" + Escape(Language ?? "en") + "\"");
             sb.AppendLine("}");
             string tmp = ConfigPath + ".tmp";
             File.WriteAllText(tmp, sb.ToString(), new UTF8Encoding(false));
