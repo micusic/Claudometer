@@ -1,11 +1,19 @@
 # Claudometer
 
+> **See your Claude limit before you hit it.**
+
+[![Latest release](https://img.shields.io/github/v/release/micusic/Claudometer?color=2E6BE6&label=release)](../../releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/micusic/Claudometer/total?color=1C9A55&label=downloads)](../../releases)
+[![License: MIT](https://img.shields.io/github/license/micusic/Claudometer?color=555)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/micusic/Claudometer?style=social)](../../stargazers)
+
 A Windows tray app that shows your Claude usage limits — the real 5-hour and weekly numbers,
-straight from Anthropic's own usage API. Native WinForms, ~64 KB, no runtime to install.
+straight from Anthropic's own usage API. One ~100 KB exe, no runtime to install, no terminal to
+keep open — it just lives in your tray and turns amber, then red, before you run out.
+
+![Claudometer — headroom, on track, and about to hit the wall](docs/triptych.png)
 
 *(Named for the `-ometer` instrument family — speed·o·meter, therm·o·meter — Claud·o·meter.)*
-
-![panel](docs/panel.png)
 
 ## Download
 
@@ -28,6 +36,26 @@ automatically (toggle in Settings, or **Check for updates…** in the menu).
 
 > Requires a Claude subscription (Pro / Max / Team). Unofficial, not affiliated with Anthropic;
 > it only calls Anthropic's own endpoints with your account's token.
+
+---
+
+## Why Claudometer
+
+There are good CLI tools for this (ccusage, Claude-Code-Usage-Monitor). Claudometer's bet is that a
+limit you have to *run a command* to see is a limit you'll forget to check — so it lives in the
+tray, always one glance away, and changes colour before you run out.
+
+|  | **Claudometer** | CLI usage monitors |
+|---|---|---|
+| Always visible | ✅ sits in the tray | ❌ run a command each time |
+| Numbers | Official usage API — exact % + reset | Often estimated from local token logs |
+| Install | One ~100 KB exe, no runtime | Python / Node + dependencies |
+| Burn-up chart | ✅ your pace vs the limit, with a forecast | Mostly text |
+| Languages | 5 — EN / 中文 / FR / RU / JA | Usually English |
+| Updates | Self-updating from Releases | Manual |
+
+No magic — it calls the same endpoint Claude Code's own status line uses. It just makes the number
+impossible to miss.
 
 ---
 
