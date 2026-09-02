@@ -15,7 +15,7 @@ namespace TokenMeter
         private readonly AppConfig _cfg;
 
         private NumericUpDown _warn, _danger, _refresh;
-        private CheckBox _notify, _autostart;
+        private CheckBox _notify, _autostart, _autoupdate;
         private ComboBox _tz, _theme, _lang;
 
         public SettingsForm(AppConfig cfg)
@@ -34,7 +34,7 @@ namespace TokenMeter
             BackColor = Bg;
             ForeColor = Fg;
             Font = new Font(FontName, 9f);
-            ClientSize = new Size(470, 402);
+            ClientSize = new Size(470, 430);
 
             int y = 14;
             AddNote(L.S("settings.note"), ref y);
@@ -59,6 +59,7 @@ namespace TokenMeter
 
             y += 6;
             _notify = AddCheck(L.S("settings.notify"), _cfg.Notify, ref y);
+            _autoupdate = AddCheck(L.S("settings.autoupdate"), _cfg.AutoUpdate, ref y);
             _autostart = AddCheck(L.S("settings.autostart"), Autostart.IsEnabled(), ref y);
 
             y += 10;
@@ -169,6 +170,7 @@ namespace TokenMeter
             _cfg.DangerPct = (double)_danger.Value / 100.0;
             _cfg.PollSeconds = (int)_refresh.Value;
             _cfg.Notify = _notify.Checked;
+            _cfg.AutoUpdate = _autoupdate.Checked;
             if (_lang.SelectedIndex >= 0) _cfg.Language = L.Codes[_lang.SelectedIndex];
             if (_tz.SelectedItem != null) _cfg.TimeZoneId = _tz.SelectedItem.ToString();
             _cfg.ThemeMode = _theme.SelectedIndex == 1 ? "dark" : "light";

@@ -37,6 +37,13 @@ namespace TokenMeter
         public double NowMinutes;        // minutes from window start to the latest sample
         public const double WindowMinutes = 300;
 
+        // Forecast: extrapolate the recent observed slope from "now" to the reset (an estimate,
+        // shown dashed). ForecastEndMin/Pct is where the dashed line ends (the reset, or the 100%
+        // crossing if it would hit the ceiling first).
+        public bool HasForecast;
+        public double ForecastEndMin;
+        public double ForecastEndPct;
+
         public int SampleCount;
     }
 
@@ -82,8 +89,47 @@ namespace TokenMeter
                 s.NowMinutes = win.Count > 0
                     ? (win[win.Count - 1].Utc - start).TotalMinutes
                     : (nowUtc - start).TotalMinutes;
+
+                BuildForecast(s);
             }
             return s;
+        }
+
+        /// <summary>
+        /// Extrapolate the recent observed slope from now to the reset. Uses the last ~45 minutes
+        /// of readings for the rate; within a window usage only rises, so a negative slope (noise)
+        /// is treated as flat. The endpoint is the reset, or the 100% crossing if it comes first.
+        /// </summary>
+        private static void BuildForecast(Snapshot s)
+        {
+            int n = s.BurnPct.Count;
+            if (n < 2 || s.NowMinutes >= Snapshot.WindowMinutes) return;
+
+            double nowMin = s.BurnMin[n - 1], nowPct = s.BurnPct[n - 1];
+            double refMin = s.BurnMin[0], refPct = s.BurnPct[0];
+            for (int i = n - 1; i >= 0; i--)
+            {
+                if (nowMin - s.BurnMin[i] >= 45) { refMin = s.BurnMin[i]; refPct = s.BurnPct[i]; break; }
+                refMin = s.BurnMin[i]; refPct = s.BurnPct[i];
+            }
+
+            double span = nowMin - refMin;
+            if (span < 8) return;   // too little history for a meaningful slope
+
+            double ratePerMin = (nowPct - refPct) / span;
+            if (ratePerMin < 0) ratePerMin = 0;
+
+            double toReset = Snapshot.WindowMinutes - nowMin;
+            double endPct = nowPct + ratePerMin * toReset;
+            double endMin = Snapshot.WindowMinutes;
+            if (endPct > 100 && ratePerMin > 0)
+            {
+                endMin = nowMin + (100 - nowPct) / ratePerMin;
+                endPct = 100;
+            }
+            s.HasForecast = true;
+            s.ForecastEndMin = endMin;
+            s.ForecastEndPct = endPct;
         }
     }
 }

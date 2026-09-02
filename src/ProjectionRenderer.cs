@@ -94,6 +94,12 @@ namespace TokenMeter
                 using (var p = new Pen(actual, 2.6f * scale) { LineJoin = LineJoin.Round, StartCap = LineCap.Round, EndCap = LineCap.Round })
                     g.DrawLines(p, pts.ToArray());
             PointF tip = pts[pts.Count - 1];
+
+            // forecast: dashed extrapolation of the recent slope from now to the reset (an estimate)
+            if (s.HasForecast)
+                using (var p = new Pen(actual, 2.2f * scale) { DashStyle = DashStyle.Dash })
+                    g.DrawLine(p, tip.X, tip.Y, X(s.ForecastEndMin), Y(s.ForecastEndPct));
+
             using (var b = new SolidBrush(actual)) g.FillEllipse(b, tip.X - 3.5f * scale, tip.Y - 3.5f * scale, 7f * scale, 7f * scale);
 
             // 'now' divider at the latest sample

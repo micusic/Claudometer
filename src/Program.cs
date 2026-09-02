@@ -18,6 +18,7 @@ namespace TokenMeter
         {
             if (Has(args, "--login")) { AttachConsole(-1); Report.Login(); return; }
             if (Has(args, "--api")) { AttachConsole(-1); Report.ApiStatus(); return; }
+            if (Has(args, "--update-check")) { AttachConsole(-1); Report.UpdateCheck(); return; }
             if (Has(args, "--snapshot"))
             {
                 try { SetProcessDPIAware(); } catch (Exception) { }
@@ -83,6 +84,9 @@ namespace TokenMeter
         private int _backoffSec;
         private string _apiStatus = "";
 
+        private DateTime _nextUpdateCheck = DateTime.UtcNow.AddSeconds(20);
+        private bool _updating;
+
         // Alerts, re-armed when the window resets or usage falls back below the warn line.
         private DateTime _alertWindowReset = DateTime.MinValue;
         private bool _sentWarn, _sentDanger, _sentOver;
@@ -97,6 +101,7 @@ namespace TokenMeter
             _token = OAuth.Load();
             _backoffSec = _cfg.PollSeconds;
             _history.Load();
+            Updater.CleanupOld();   // remove the previous exe left by a past self-update
 
             BuildTray();
             _panel.RefreshRequested += delegate { PollNow(); };
@@ -134,6 +139,7 @@ namespace TokenMeter
             menu.Items.Add(_logoutItem);
             menu.Items.Add(L.S("menu.settings"), null, delegate { OpenSettings(); });
             menu.Items.Add(L.S("menu.datadir"), null, delegate { OpenFolder(AppConfig.Dir); });
+            menu.Items.Add(L.S("menu.update"), null, delegate { CheckUpdate(true); });
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(L.S("menu.about"), null, delegate { About(); });
             menu.Items.Add(L.S("menu.quit"), null, delegate { Quit(); });
@@ -163,6 +169,58 @@ namespace TokenMeter
         {
             if (_token != null && (DateTime.UtcNow - _lastPollUtc).TotalSeconds >= _backoffSec) PollNow();
             else { Rebuild(); ApplySnapshot(); }   // keep the countdown live between polls
+
+            if (DateTime.UtcNow >= _nextUpdateCheck)
+            {
+                _nextUpdateCheck = DateTime.UtcNow.AddHours(6);
+                CheckUpdate(false);
+            }
+        }
+
+        /// <summary>
+        /// Check GitHub Releases for a newer build. Manual checks always apply; automatic checks
+        /// apply only when auto-update is on (otherwise they just say one is available). Applying
+        /// swaps the exe and relaunches.
+        /// </summary>
+        private void CheckUpdate(bool manual)
+        {
+            if (_updating) return;
+            _updating = true;
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                Updater.Info info = Updater.Check();
+                try { _panel.BeginInvoke((MethodInvoker)delegate { OnUpdateChecked(info, manual); }); }
+                catch (Exception) { _updating = false; }
+            });
+        }
+
+        private void OnUpdateChecked(Updater.Info info, bool manual)
+        {
+            try
+            {
+                if (info == null)
+                {
+                    if (manual) _tray.ShowBalloonTip(5000, "Claudometer", L.F("update.uptodate", Updater.Version), ToolTipIcon.Info);
+                    return;
+                }
+                if (!manual && !_cfg.AutoUpdate)
+                {
+                    _tray.ShowBalloonTip(8000, "Claudometer", L.F("update.found", info.Version), ToolTipIcon.Info);
+                    return;
+                }
+                _tray.ShowBalloonTip(6000, "Claudometer", L.F("update.applying", info.Version), ToolTipIcon.Info);
+                string newExe, err;
+                if (Updater.Apply(info, out newExe, out err))
+                {
+                    try { Process.Start(newExe); } catch (Exception) { }
+                    Quit();
+                }
+                else
+                {
+                    _tray.ShowBalloonTip(8000, "Claudometer", L.F("update.failed", err), ToolTipIcon.Warning);
+                }
+            }
+            finally { _updating = false; }
         }
 
         private void PollNow()
@@ -356,8 +414,8 @@ namespace TokenMeter
             _panel.SuppressAutoHide = true;
             try
             {
-                MessageBox.Show(L.F("about.body", _history.Samples.Count), L.S("about.title"),
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("v" + Updater.Version + "\n\n" + L.F("about.body", _history.Samples.Count),
+                    L.S("about.title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             finally { _panel.SuppressAutoHide = false; }
         }

@@ -41,6 +41,17 @@ namespace TokenMeter
             W("");
         }
 
+        /// <summary>`--update-check` - print the latest release and whether it's newer (no apply).</summary>
+        public static void UpdateCheck()
+        {
+            W("current : v" + Updater.Version);
+            Updater.Info latest = Updater.Latest();
+            if (latest == null) { W("latest  : (could not reach GitHub Releases)"); return; }
+            W("latest  : v" + latest.Version + "  (" + latest.Size + " bytes)");
+            W("asset   : " + latest.Url);
+            W("newer?  : " + (Updater.IsNewer(latest.Version, Updater.Version) ? "YES — would update" : "no — up to date"));
+        }
+
         /// <summary>`--api` - print the current usage using the stored token, and record it to history.</summary>
         public static void ApiStatus()
         {

@@ -22,7 +22,9 @@ To start it with Windows (autostart + Start-menu shortcut + taskbar pin), clone 
 .\install.ps1
 ```
 
-`.\install.ps1 -Uninstall` reverses all of it.
+`.\install.ps1 -Uninstall` reverses all of it. After that first install it **updates itself** —
+it checks GitHub Releases on start and every few hours, and swaps in a newer `Claudometer.exe`
+automatically (toggle in Settings, or **Check for updates…** in the menu).
 
 > Requires a Claude subscription (Pro / Max / Team). Unofficial, not affiliated with Anthropic;
 > it only calls Anthropic's own endpoints with your account's token.
@@ -65,14 +67,17 @@ The centerpiece plots utilization across the fixed five-hour window:
 
 - **X** — the whole window, start → reset, so "now" sits where you are in it
 - **Y** — percent used, 0 → 100
-- **green line** — the actual readings, connecting the stored API polls up to the latest one
+- **green solid** — the actual readings, connecting the stored API polls up to the latest one
+- **green dashed** — a forecast: the recent observed slope extended to the reset (an estimate,
+  clearly dashed; capped at 100%)
 - **grey line** — the pace line: a constant rate from (start, 0) to (reset, 100%), i.e. "use
   evenly and you'd hit the limit exactly at reset"
 - **red dashed** — the 100% ceiling
 
-Below the pace line and clear of the ceiling = headroom to spare. The line only has points from
-when the app was running and polling — it fills in over time and never extrapolates. The colour
-tracks the level (green / amber / red at your warn / danger thresholds).
+Below the pace line and clear of the ceiling = headroom to spare. The solid line has points only
+from when the app was running and polling — it never fabricates the past; the dashed forecast is
+the one estimate, derived from real readings. Colour tracks the level (green / amber / red at your
+warn / danger thresholds).
 
 The 5-hour gauge, the 7-day gauge, and the per-model weekly rows (Opus / Sonnet, when the API
 returns them) are all the current reading; each shows its real reset countdown.
@@ -96,6 +101,7 @@ clock.
 | `warnPct` / `dangerPct` | 0.70 / 0.90 | Icon colour and balloon thresholds |
 | `pollSeconds` | 90 | How often to poll the usage API (min 60, to be gentle) |
 | `notify` | true | Threshold balloons |
+| `autoUpdate` | true | Self-update from GitHub Releases (checked on start + every 6 h) |
 | `timeZoneId` | `Singapore Standard Time` | Display zone |
 | `theme` | `light` | `light` or `dark` |
 | `language` | `en` | `en` / `zh` / `fr` / `ru` / `ja` |
@@ -126,7 +132,8 @@ src/ProjectionRenderer.cs  the burn-up chart
 src/PanelForm.cs           the panel
 src/SettingsForm.cs        settings dialog
 src/LoginForm.cs           the login dialog
-src/Report.cs              --login / --api / --snapshot / --snapdlg
+src/Updater.cs             self-update from GitHub Releases
+src/Report.cs              --login / --api / --update-check / --snapshot / --snapdlg
 src/Program.cs             tray, poll loop, alerting
 ```
 

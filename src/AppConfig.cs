@@ -19,6 +19,7 @@ namespace TokenMeter
         public double DangerPct = 0.90;
         public int PollSeconds = 90;      // how often to poll the usage API (min 60 to be gentle)
         public bool Notify = true;
+        public bool AutoUpdate = true;
         public string TimeZoneId = Tz.DefaultId;
         public string ThemeMode = "light";   // "light" | "dark"
         public string Language = "en";        // en | zh | fr | ru | ja
@@ -64,6 +65,7 @@ namespace TokenMeter
                 c.DangerPct = Num(kv, "dangerPct", c.DangerPct);
                 c.PollSeconds = (int)Num(kv, "pollSeconds", c.PollSeconds);
                 c.Notify = Bool(kv, "notify", c.Notify);
+                c.AutoUpdate = Bool(kv, "autoUpdate", c.AutoUpdate);
                 string tz;
                 if (kv.TryGetValue("timeZoneId", out tz) && !string.IsNullOrEmpty(tz)) c.TimeZoneId = Unescape(tz);
                 string theme;
@@ -95,6 +97,7 @@ namespace TokenMeter
             sb.AppendLine("  \"dangerPct\": " + F(DangerPct) + ",");
             sb.AppendLine("  \"pollSeconds\": " + PollSeconds + ",");
             sb.AppendLine("  \"notify\": " + (Notify ? "true" : "false") + ",");
+            sb.AppendLine("  \"autoUpdate\": " + (AutoUpdate ? "true" : "false") + ",");
             sb.AppendLine("  \"timeZoneId\": \"" + Escape(TimeZoneId ?? Tz.DefaultId) + "\",");
             sb.AppendLine("  \"theme\": \"" + Escape(ThemeMode ?? "light") + "\",");
             sb.AppendLine("  \"language\": \"" + Escape(Language ?? "en") + "\"");

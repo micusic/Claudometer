@@ -273,8 +273,9 @@ namespace TokenMeter
             // legend
             float x = Lx;
             x = Swatch(g, x, y, ProjectionRenderer.ActualColor(_snap), L.S("legend.actual"), false);
-            x = Swatch(g, x + S(10), y, ProjectionRenderer.PaceColor, L.S("legend.pace"), false);
-            Swatch(g, x + S(10), y, ProjectionRenderer.CeilingColor, L.S("legend.ceiling"), true);
+            x = Swatch(g, x + S(8), y, ProjectionRenderer.ActualColor(_snap), L.S("legend.forecast"), true);
+            x = Swatch(g, x + S(8), y, ProjectionRenderer.PaceColor, L.S("legend.pace"), false);
+            Swatch(g, x + S(8), y, ProjectionRenderer.CeilingColor, L.S("legend.ceiling"), true);
             string samples = L.F("chart.samples", _snap.BurnPct.Count);
             SizeF nm = g.MeasureString(samples, _f7);
             Str(g, samples, _f7, Theme.Faint, Rx - nm.Width, y);

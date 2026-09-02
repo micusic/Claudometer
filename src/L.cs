@@ -85,6 +85,7 @@ namespace TokenMeter
 
             Add("chart.title", "Burn-up — this window", "本窗口燃起图", "Burn-up — cette fenêtre", "Burn-up — это окно", "バーンアップ（この期間）");
             Add("legend.actual", "actual", "实际", "réel", "факт", "実績");
+            Add("legend.forecast", "forecast", "预测", "prévision", "прогноз", "予測");
             Add("legend.pace", "pace", "匀速", "rythme", "темп", "ペース");
             Add("legend.ceiling", "limit 100%", "上限 100%", "limite 100 %", "предел 100%", "上限 100%");
             Add("chart.samples", "{0} data points", "{0} 个采样点", "{0} points", "{0} точек", "{0} 個のサンプル");
@@ -105,7 +106,13 @@ namespace TokenMeter
             Add("menu.logout", "Sign out", "退出登录", "Se déconnecter", "Выйти", "ログアウト");
             Add("menu.settings", "Settings…", "设置…", "Paramètres…", "Настройки…", "設定…");
             Add("menu.datadir", "Open data folder", "打开数据目录", "Ouvrir le dossier de données", "Открыть папку данных", "データフォルダーを開く");
+            Add("menu.update", "Check for updates…", "检查更新…", "Rechercher des mises à jour…", "Проверить обновления…", "更新を確認…");
             Add("menu.about", "About", "关于", "À propos", "О программе", "情報");
+            Add("update.uptodate", "You're on the latest version (v{0}).", "已是最新版本（v{0}）。", "Vous avez la dernière version (v{0}).", "Установлена последняя версия (v{0}).", "最新バージョンです（v{0}）。");
+            Add("update.found", "Update available: v{0}", "有新版本可用：v{0}", "Mise à jour disponible : v{0}", "Доступно обновление: v{0}", "更新があります：v{0}");
+            Add("update.applying", "Updating to v{0}…", "正在更新到 v{0}…", "Mise à jour vers v{0}…", "Обновление до v{0}…", "v{0} に更新中…");
+            Add("update.failed", "Update failed: {0}", "更新失败：{0}", "Échec de la mise à jour : {0}", "Обновление не удалось: {0}", "更新に失敗：{0}");
+            Add("settings.autoupdate", "Auto-update", "自动更新", "Mise à jour auto", "Автообновление", "自動更新");
             Add("menu.quit", "Quit", "退出", "Quitter", "Выход", "終了");
 
             Add("tray.notloggedin", "Claudometer · not signed in", "Claudometer · 未登录", "Claudometer · non connecté", "Claudometer · не выполнен вход", "Claudometer · 未ログイン");
