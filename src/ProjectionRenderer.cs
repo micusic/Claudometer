@@ -86,16 +86,13 @@ namespace TokenMeter
 
             Color actual = ActualColor(s);
 
-            // actual: real API samples, solid, from window start to the latest poll
+            // actual: the real API readings, connected in order. No synthetic points - the line is
+            // exactly what was observed, so a gap when the app wasn't polling is a gap, not a guess.
             var pts = new List<PointF>();
             for (int i = 0; i < s.BurnPct.Count; i++) pts.Add(new PointF(X(s.BurnMin[i]), Y(s.BurnPct[i])));
-            if (pts.Count == 1)
-            {
-                // a single reading: show the point and a baseline from window start
-                pts.Insert(0, new PointF(X(0), Y(0)));
-            }
-            using (var p = new Pen(actual, 2.6f * scale) { LineJoin = LineJoin.Round, StartCap = LineCap.Round, EndCap = LineCap.Round })
-                g.DrawLines(p, pts.ToArray());
+            if (pts.Count >= 2)
+                using (var p = new Pen(actual, 2.6f * scale) { LineJoin = LineJoin.Round, StartCap = LineCap.Round, EndCap = LineCap.Round })
+                    g.DrawLines(p, pts.ToArray());
             PointF tip = pts[pts.Count - 1];
             using (var b = new SolidBrush(actual)) g.FillEllipse(b, tip.X - 3.5f * scale, tip.Y - 3.5f * scale, 7f * scale, 7f * scale);
 

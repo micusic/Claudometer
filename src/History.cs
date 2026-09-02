@@ -26,11 +26,21 @@ namespace TokenMeter
         {
             var s = new UsageSample();
             s.Utc = r.FetchedUtc;
-            if (r.FiveHour.HasValue) { s.FivePct = r.FiveHour.Utilization; s.FiveResetUtc = r.FiveHour.ResetUtc; }
-            if (r.SevenDay.HasValue) { s.SevenPct = r.SevenDay.Utilization; s.SevenResetUtc = r.SevenDay.ResetUtc; }
-            if (r.SevenDayOpus.HasValue) { s.OpusPct = r.SevenDayOpus.Utilization; s.OpusResetUtc = r.SevenDayOpus.ResetUtc; }
-            if (r.SevenDaySonnet.HasValue) { s.SonnetPct = r.SevenDaySonnet.Utilization; s.SonnetResetUtc = r.SevenDaySonnet.ResetUtc; }
+            // The API's resets_at carries sub-second jitter around the true boundary (…59:59.95 vs
+            // …00:00.12), so round to the whole minute. That gives every reading in one window the
+            // same canonical reset, which is what window-membership and coalescing key on.
+            if (r.FiveHour.HasValue) { s.FivePct = r.FiveHour.Utilization; s.FiveResetUtc = RoundMinute(r.FiveHour.ResetUtc); }
+            if (r.SevenDay.HasValue) { s.SevenPct = r.SevenDay.Utilization; s.SevenResetUtc = RoundMinute(r.SevenDay.ResetUtc); }
+            if (r.SevenDayOpus.HasValue) { s.OpusPct = r.SevenDayOpus.Utilization; s.OpusResetUtc = RoundMinute(r.SevenDayOpus.ResetUtc); }
+            if (r.SevenDaySonnet.HasValue) { s.SonnetPct = r.SevenDaySonnet.Utilization; s.SonnetResetUtc = RoundMinute(r.SevenDaySonnet.ResetUtc); }
             return s;
+        }
+
+        private static DateTime RoundMinute(DateTime t)
+        {
+            if (t <= DateTime.MinValue) return t;
+            long m = (long)Math.Round(t.Ticks / (double)TimeSpan.TicksPerMinute);
+            return new DateTime(m * TimeSpan.TicksPerMinute, t.Kind);
         }
 
         public void Write(BinaryWriter w)
@@ -104,13 +114,19 @@ namespace TokenMeter
             if (drop > 0) _samples.RemoveRange(0, drop);
         }
 
-        /// <summary>Samples inside the current five-hour window [reset-5h, now], for the burn-up line.</summary>
+        /// <summary>
+        /// Samples inside the current five-hour window [reset-5h, now], for the burn-up line.
+        /// Window membership is by a reset-time tolerance, not exact equality: the API's reset
+        /// jitters by under a second, and adjacent windows are five hours apart, so anything within
+        /// half an hour of the target reset belongs to the same window.
+        /// </summary>
         public List<UsageSample> InFiveHourWindow(DateTime resetUtc, DateTime now)
         {
             DateTime start = resetUtc - TimeSpan.FromHours(5);
             var outp = new List<UsageSample>();
             foreach (UsageSample s in _samples)
-                if (!double.IsNaN(s.FivePct) && s.FiveResetUtc == resetUtc && s.Utc >= start && s.Utc <= now)
+                if (!double.IsNaN(s.FivePct) && s.Utc >= start && s.Utc <= now
+                    && Math.Abs((s.FiveResetUtc - resetUtc).TotalMinutes) < 30)
                     outp.Add(s);
             return outp;
         }
