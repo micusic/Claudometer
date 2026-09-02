@@ -167,6 +167,8 @@ namespace TokenMeter
                 g.SmoothingMode = sm;
             }
             Str(g, "Claudometer", _f11b, Theme.Text, Lx + S(15), y - S(1));
+            float titleW = g.MeasureString("Claudometer", _f11b).Width;
+            Str(g, "v" + Updater.Version, _f7, Theme.Faint, Lx + S(15) + titleW + S(4), y + S(5));
 
             int bx = Rx - S(28);
             bx = IconButton(g, "close", "✕", bx, y - S(3));
