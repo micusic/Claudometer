@@ -37,6 +37,16 @@ automatically (toggle in Settings, or **Check for updates…** in the menu).
 > Requires a Claude subscription (Pro / Max / Team). Unofficial, not affiliated with Anthropic;
 > it only calls Anthropic's own endpoints with your account's token.
 
+### macOS (beta)
+
+A native menu-bar port lives on the [`mac`](../../tree/mac) branch. Download **`Claudometer-mac.zip`**
+from the [latest macOS release](../../releases) (asset on *Claudometer for macOS*), unzip
+`Claudometer.app`, and drag it to Applications. It's unsigned, so the first launch is **right-click →
+Open**. It sits in the menu bar (not the Dock); click it → **Show panel**, then sign in.
+
+Same API-only design and burn-up chart as the Windows build. Still beta: English-only, no settings
+window or self-update yet. Requires macOS 12+.
+
 ---
 
 ## Why Claudometer
