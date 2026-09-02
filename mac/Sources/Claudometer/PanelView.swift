@@ -187,7 +187,7 @@ final class PanelView: NSView {
     private func swatch(_ color: NSColor, _ label: String, _ x: CGFloat, _ y: CGFloat, dashed: Bool) -> CGFloat {
         color.setStroke()
         let p = NSBezierPath(); p.lineWidth = 2.4
-        if dashed { p.setLineDash([4, 3], count: 2, phase: 0) }
+        if dashed { let d: [CGFloat] = [4, 3]; p.setLineDash(d, count: 2, phase: 0) }
         p.move(to: NSPoint(x: x, y: y + 7)); p.line(to: NSPoint(x: x + 13, y: y + 7)); p.stroke()
         t(label, x + 16, y, fSmall, theme.muted)
         return x + 16 + size(label, fSmall).width

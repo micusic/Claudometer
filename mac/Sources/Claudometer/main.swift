@@ -2,7 +2,7 @@ import AppKit
 
 enum App { static let version = "1.2.0" }
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private let popover = NSPopover()
     private let panel = PanelView(frame: NSRect(x: 0, y: 0, width: 330, height: 470))
@@ -22,12 +22,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         token = OAuth.loadToken()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        if let b = statusItem.button {
-            b.title = "◔"
-            b.target = self
-            b.action = #selector(statusClicked)
-            b.sendAction(on: [.leftMouseUp, .rightMouseUp])
-        }
+        statusItem.button?.title = "◔"
+        let menu = NSMenu()
+        menu.delegate = self          // rebuilt on open so it reflects login state
+        statusItem.menu = menu
 
         popover.behavior = .transient
         popover.contentSize = panel.bounds.size
@@ -40,40 +38,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if token != nil { pollNow() }
     }
 
-    // ---- status item ----
+    // ---- menu (rebuilt each open) ----
 
-    @objc private func statusClicked() {
-        let rightClick = NSApp.currentEvent?.type == .rightMouseUp
-        if rightClick { showMenu() } else { togglePopover() }
-    }
-
-    private func togglePopover() {
-        if popover.isShown { popover.performClose(nil); return }
-        panel.snapshot = snapshot; panel.needsDisplay = true
-        if let b = statusItem.button {
-            popover.show(relativeTo: b.bounds, of: b, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
-        }
-    }
-
-    private func showMenu() {
-        let m = NSMenu()
-        m.addItem(NSMenuItem(title: "Refresh now", action: #selector(pollNow), keyEquivalent: ""))
-        m.addItem(.separator())
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        add(menu, "Show panel", #selector(showPanel))
+        add(menu, "Refresh now", #selector(pollNow))
+        menu.addItem(.separator())
         if token == nil {
-            m.addItem(NSMenuItem(title: "Sign in to Claude…", action: #selector(doLogin), keyEquivalent: ""))
+            add(menu, "Sign in to Claude…", #selector(doLogin))
         } else {
-            m.addItem(NSMenuItem(title: "Re-sign in…", action: #selector(doLogin), keyEquivalent: ""))
-            m.addItem(NSMenuItem(title: "Sign out", action: #selector(doLogout), keyEquivalent: ""))
+            add(menu, "Re-sign in…", #selector(doLogin))
+            add(menu, "Sign out", #selector(doLogout))
         }
-        m.addItem(NSMenuItem(title: "Open data folder", action: #selector(openFolder), keyEquivalent: ""))
-        m.addItem(.separator())
-        m.addItem(NSMenuItem(title: "Claudometer v\(App.version)", action: nil, keyEquivalent: ""))
-        m.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-        for it in m.items where it.action != nil && it.target == nil { it.target = self }
-        statusItem.menu = m
-        statusItem.button?.performClick(nil)
-        statusItem.menu = nil   // detach so left-click resumes toggling the popover
+        add(menu, "Open data folder", #selector(openFolder))
+        menu.addItem(.separator())
+        let v = NSMenuItem(title: "Claudometer v\(App.version)", action: nil, keyEquivalent: "")
+        v.isEnabled = false
+        menu.addItem(v)
+        menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+    }
+
+    private func add(_ menu: NSMenu, _ title: String, _ action: Selector) {
+        let it = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        it.target = self
+        menu.addItem(it)
+    }
+
+    @objc private func showPanel() {
+        panel.snapshot = snapshot; panel.needsDisplay = true
+        guard let b = statusItem.button else { return }
+        popover.show(relativeTo: b.bounds, of: b, preferredEdge: .minY)
+        popover.contentViewController?.view.window?.makeKey()
     }
 
     // ---- polling ----
@@ -131,8 +127,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // ---- actions ----
 
     @objc private func doLogin() {
-        let t = LoginWindow().run()
-        if let t = t { token = t; backoff = pollInterval; lastPoll = .distantPast; pollNow() }
+        if let t = LoginWindow().run() { token = t; backoff = pollInterval; lastPoll = .distantPast; pollNow() }
     }
 
     @objc private func doLogout() {
