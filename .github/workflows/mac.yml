@@ -1,0 +1,53 @@
+name: mac
+
+on:
+  push:
+    branches: [mac]
+    tags: ['v*-mac']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: swift --version && xcodebuild -version || true
+
+      - name: Build (release)
+        working-directory: mac
+        run: swift build -c release --arch arm64 --arch x86_64
+
+      - name: Assemble Claudometer.app
+        working-directory: mac
+        run: |
+          set -e
+          APP="Claudometer.app"
+          rm -rf "$APP"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          BIN="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/Claudometer"
+          cp "$BIN" "$APP/Contents/MacOS/Claudometer"
+          cp Info.plist "$APP/Contents/Info.plist"
+          chmod +x "$APP/Contents/MacOS/Claudometer"
+          # ad-hoc sign so Gatekeeper lets it launch after the quarantine bit is cleared
+          codesign --force --deep --sign - "$APP"
+          codesign --verify --deep --strict "$APP" && echo "signed (ad-hoc)"
+          ditto -c -k --keepParent "$APP" Claudometer-mac.zip
+          echo "built:" && ls -la Claudometer-mac.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Claudometer-mac
+          path: mac/Claudometer-mac.zip
+          if-no-files-found: error
+
+      - name: Attach to release (on v*-mac tags)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: mac/Claudometer-mac.zip
