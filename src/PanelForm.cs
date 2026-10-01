@@ -338,10 +338,26 @@ namespace TokenMeter
             Snapshot s = _snap;
             int y = ClientSize.Height - S(24);
             Line(g, y - S(8));
-            Str(g, L.F("footer.read", Fmt.LocalTime(s.ApiLiveUtc)), _f7, Theme.Faint, Lx, y);
+
             string right = L.F("footer.history", s.SampleCount);
             SizeF m = g.MeasureString(right, _f7);
             Str(g, right, _f7, Theme.Faint, Rx - m.Width, y);
+
+            // A poll that keeps failing used to be invisible once any history existed: the panel
+            // went on showing the last reading and only this timestamp quietly stopped moving.
+            // Say what is actually wrong, in the slot that claims where the numbers came from.
+            bool bad = !string.IsNullOrEmpty(s.ApiStatus);
+            string left = bad ? s.ApiStatus : L.F("footer.read", Fmt.LocalTime(s.ApiLiveUtc));
+            Str(g, Ellipsize(g, left, _f7, (Rx - m.Width) - Lx - S(10)), _f7,
+                bad ? Theme.WarnText : Theme.Faint, Lx, y);
+        }
+
+        /// <summary>Trims to fit the given width, with a trailing ellipsis when it had to cut.</summary>
+        private string Ellipsize(Graphics g, string s, Font f, float max)
+        {
+            if (max <= 0 || g.MeasureString(s, f).Width <= max) return s;
+            while (s.Length > 1 && g.MeasureString(s + "…", f).Width > max) s = s.Substring(0, s.Length - 1);
+            return s + "…";
         }
 
         // ---- primitives --------------------------------------------------------------

@@ -14,7 +14,7 @@ namespace TokenMeter
     /// </summary>
     public static class Updater
     {
-        public const string Version = "1.2.1";
+        public const string Version = "1.2.2";
         private const string Repo = "micusic/Claudometer";
         private const string AssetName = "Claudometer.exe";
         private const string UA = "Claudometer-updater";

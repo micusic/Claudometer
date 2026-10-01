@@ -129,7 +129,7 @@ namespace TokenMeter
                 new[] { "redirect_uri", RedirectUri },
                 new[] { "code_verifier", verifier },
             };
-            return PostToken(fields, out error, out rateLimited);
+            bool _; return PostToken(fields, out error, out rateLimited, out _);
         }
 
         /// <summary>Convenience overload (used by the refresh path, which ignores the flag).</summary>
@@ -146,7 +146,23 @@ namespace TokenMeter
                 new[] { "refresh_token", refreshToken },
                 new[] { "client_id", ClientId },
             };
-            bool _; return PostToken(fields, out error, out _);
+            bool _, __; return PostToken(fields, out error, out _, out __);
+        }
+
+        /// <summary>
+        /// Refresh, reporting whether the grant is permanently dead. The server answers an expired
+        /// or revoked refresh token with 400 <c>invalid_grant</c>; no amount of retrying fixes that,
+        /// so the caller must stop and ask for a new sign-in rather than keep polling forever.
+        /// </summary>
+        public static TokenSet Refresh(string refreshToken, out string error, out bool invalidGrant)
+        {
+            var fields = new[]
+            {
+                new[] { "grant_type", "refresh_token" },
+                new[] { "refresh_token", refreshToken },
+                new[] { "client_id", ClientId },
+            };
+            bool _; return PostToken(fields, out error, out _, out invalidGrant);
         }
 
         /// <summary>
@@ -156,9 +172,10 @@ namespace TokenMeter
         /// Only a 404 / connection failure ("wrong host") advances to the next host; a 400/401 on
         /// one host is answered by trying the other encoding there once, then giving up.
         /// </summary>
-        private static TokenSet PostToken(string[][] fields, out string error, out bool rateLimited)
+        private static TokenSet PostToken(string[][] fields, out string error, out bool rateLimited,
+                                          out bool invalidGrant)
         {
-            error = null; rateLimited = false;
+            error = null; rateLimited = false; invalidGrant = false;
             string lastErr = "";
 
             for (int h = 0; h < TokenUrls.Length; h++)
@@ -191,6 +208,12 @@ namespace TokenMeter
                     }
 
                     lastErr = "HTTP " + status + " " + Trim(resp);
+
+                    // {"error":"invalid_grant"} - the code or refresh token is spent, expired or
+                    // revoked. The endpoint reached us, so this is its final answer, not a glitch.
+                    if ((status == 400 || status == 401) && resp != null
+                        && resp.IndexOf("invalid_grant", StringComparison.OrdinalIgnoreCase) >= 0)
+                        invalidGrant = true;
 
                     if (status == 400 || status == 401)
                         continue;   // real rejection on a live host: try the other encoding once

@@ -122,6 +122,7 @@ namespace TokenMeter
             Add("balloon.signedin.body", "Now reading official usage.", "开始读取官方用量。", "Lecture de l'usage officiel.", "Читаю официальные данные.", "公式の使用量を取得します。");
             Add("balloon.signedout.title", "Signed out", "已退出登录", "Déconnecté", "Выход выполнен", "ログアウトしました");
             Add("balloon.signedout.body", "Sign in to show usage.", "登录后才能显示用量。", "Connectez-vous pour afficher l'usage.", "Войдите, чтобы видеть использование.", "ログインすると使用量を表示します。");
+            Add("balloon.signedout", "Your Claude session expired — sign in again to resume updates.", "Claude 登录已过期——请重新登录以继续更新。", "Votre session Claude a expiré — reconnectez-vous pour reprendre les mises à jour.", "Сессия Claude истекла — войдите снова, чтобы продолжить обновления.", "Claude のセッションが期限切れです — 再ログインすると更新を再開します。");
             Add("balloon.full.title", "5-hour limit reached", "5 小时额度已用满", "Limite de 5 h atteinte", "5-часовой лимит исчерпан", "5 時間の上限に達しました");
             Add("balloon.reset.body", "Resets in {0}.", "{0}后重置。", "Réinit. dans {0}.", "Сброс через {0}.", "{0}後にリセットされます。");
             Add("balloon.used.title", "5-hour window at {0}%", "5 小时窗口已用 {0}%", "Fenêtre de 5 h à {0} %", "5-часовое окно: {0}%", "5 時間ウィンドウ {0}%");

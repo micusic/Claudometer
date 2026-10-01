@@ -90,6 +90,7 @@ namespace TokenMeter
         // Alerts, re-armed when the window resets or usage falls back below the warn line.
         private DateTime _alertWindowReset = DateTime.MinValue;
         private bool _sentWarn, _sentDanger, _sentOver;
+        private bool _signedOut;   // the refresh token died this run: tell the user once
 
         public TrayApp(bool showOnReady)
         {
@@ -240,21 +241,14 @@ namespace TokenMeter
 
         private void DoPoll()
         {
-            if (_token.Expired)
-            {
-                string rerr;
-                TokenSet fresh = OAuth.Refresh(_token.RefreshToken, out rerr);
-                if (fresh != null) { _token = fresh; OAuth.Save(_token); }
-                else { _apiStatus = L.S("status.tokenexpired"); return; }
-            }
+            if (_token.Expired && !TryRefresh()) return;
 
             UsageReading reading; string msg;
             UsageApi.Status st = UsageApi.Fetch(_token.AccessToken, out reading, out msg);
             if (st == UsageApi.Status.Unauthorized)
             {
-                string rerr;
-                TokenSet fresh = OAuth.Refresh(_token.RefreshToken, out rerr);
-                if (fresh != null) { _token = fresh; OAuth.Save(_token); st = UsageApi.Fetch(_token.AccessToken, out reading, out msg); }
+                if (!TryRefresh()) return;
+                st = UsageApi.Fetch(_token.AccessToken, out reading, out msg);
             }
 
             switch (st)
@@ -277,6 +271,25 @@ namespace TokenMeter
             }
         }
 
+        /// <summary>
+        /// Renew the access token; false means this poll cannot continue. A refresh can fail two
+        /// very different ways. Transient (network, 5xx, rate limit) - keep the token and try again
+        /// next tick. Dead - 400 invalid_grant, i.e. the refresh token expired or was revoked, which
+        /// no amount of retrying will fix. A dead grant used to leave the app polling forever behind
+        /// a "refreshing" pill while the panel kept showing the last reading as if it were live, so
+        /// the numbers silently froze for days. Now the token is discarded and the app falls back to
+        /// its signed-out state, which asks for a new sign-in.
+        /// </summary>
+        private bool TryRefresh()
+        {
+            string rerr; bool dead;
+            TokenSet fresh = OAuth.Refresh(_token.RefreshToken, out rerr, out dead);
+            if (fresh != null) { _token = fresh; OAuth.Save(_token); return true; }
+            if (dead) { OAuth.Clear(); _token = null; _signedOut = true; }
+            _apiStatus = L.S("status.tokenexpired");
+            return false;
+        }
+
         private void Rebuild()
         {
             lock (_gate) _snap = Analytics.Build(_history, _token != null, _apiStatus, DateTime.UtcNow);
@@ -285,7 +298,16 @@ namespace TokenMeter
         private void ApplySnapshot()
         {
             if (_snap == null) return;
-            if (!_snap.LoggedIn) { SetIcon(0, IconRenderer.IdleGray, false); _tray.Text = L.S("tray.notloggedin"); }
+            if (!_snap.LoggedIn)
+            {
+                SetIcon(0, IconRenderer.IdleGray, false);
+                _tray.Text = L.S("tray.notloggedin");
+                if (_signedOut)
+                {
+                    _signedOut = false;   // the session died under us: say so once, unprompted
+                    _tray.ShowBalloonTip(10000, "Claudometer", L.S("balloon.signedout"), ToolTipIcon.Warning);
+                }
+            }
             else if (!_snap.HasData) { SetIcon(0, IconRenderer.IdleGray, false); _tray.Text = L.S("tray.fetching"); }
             else
             {
